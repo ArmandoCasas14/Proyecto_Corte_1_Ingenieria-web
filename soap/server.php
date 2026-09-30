@@ -4,6 +4,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/ProductoService.php';
 require_once __DIR__ . '/ClienteService.php';
 require_once __DIR__ . '/PedidoService.php';
+require_once __DIR__ . '/UsuarioService.php';
 
 ini_set('display_errors', '0');
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
@@ -152,8 +153,87 @@ $server->wsdl->addComplexType(
         ]
     ]
 );
-
-
+// Usuario
+$server->wsdl->addComplexType(
+    'Usuario',
+    'complexType',
+    'struct',
+    'all',
+    '',
+    [
+        'id' => [
+            'name' => 'id',
+            'type' => 'xsd:int'
+        ],
+        'usuario' => [
+            'name' => 'usuario',
+            'type' => 'xsd:string'
+        ],
+        'estado' => [
+            'name' => 'estado',
+            'type' => 'xsd:boolean'
+        ]
+    ]
+);// Usuario
+$server->wsdl->addComplexType(
+    'Usuario',
+    'complexType',
+    'struct',
+    'all',
+    '',
+    [
+        'id' => [
+            'name' => 'id',
+            'type' => 'xsd:int'
+        ],
+        'usuario' => [
+            'name' => 'usuario',
+            'type' => 'xsd:string'
+        ],
+        'estado' => [
+            'name' => 'estado',
+            'type' => 'xsd:boolean'
+        ]
+    ]
+);
+// Usuario
+$server->wsdl->addComplexType(
+    'Usuario',
+    'complexType',
+    'struct',
+    'all',
+    '',
+    [
+        'id' => [
+            'name' => 'id',
+            'type' => 'xsd:int'
+        ],
+        'usuario' => [
+            'name' => 'usuario',
+            'type' => 'xsd:string'
+        ],
+        'estado' => [
+            'name' => 'estado',
+            'type' => 'xsd:boolean'
+        ]
+    ]
+);
+// Lista de usuarios
+$server->wsdl->addComplexType(
+    'ListaUsuarios',
+    'complexType',
+    'array',
+    '',
+    'SOAP-ENC:Array',
+    [
+        'item' => [
+            'name' => 'item',
+            'type' => 'tns:Usuario',
+            'minOccurs' => '0',
+            'maxOccurs' => 'unbounded'
+        ]
+    ]
+);
 // =====================================
 // PRODUCTOS
 // =====================================
@@ -242,7 +322,61 @@ $server->register(
     'encoded',
     'Consulta un cliente'
 );
+// =====================================
+// USUARIOS
+// =====================================
 
+$server->register(
+    'registrarUsuario',
+    [
+        'usuario' => 'xsd:string',
+        'contrasena' => 'xsd:string',
+        'estado' => 'xsd:boolean'
+    ],
+    ['return' => 'xsd:string'],
+    'urn:RestauranteService',
+    'urn:RestauranteService#registrarUsuario',
+    'rpc',
+    'encoded',
+    'Registra un usuario'
+);
+
+$server->register(
+    'consultarUsuario',
+    ['id' => 'xsd:int'],
+    ['return' => 'tns:Usuario'],
+    'urn:RestauranteService',
+    'urn:RestauranteService#consultarUsuario',
+    'rpc',
+    'encoded',
+    'Consulta un usuario'
+);
+
+$server->register(
+    'listarUsuarios',
+    [],
+    ['return' => 'tns:ListaUsuarios'],
+    'urn:RestauranteService',
+    'urn:RestauranteService#listarUsuarios',
+    'rpc',
+    'encoded',
+    'Lista todos los usuarios'
+);
+
+$server->register(
+    'actualizarUsuario',
+    [
+        'id' => 'xsd:int',
+        'usuario' => 'xsd:string',
+        'estado' => 'xsd:boolean'
+    ],
+    ['return' => 'xsd:string'],
+    'urn:RestauranteService',
+    'urn:RestauranteService#actualizarUsuario',
+    'rpc',
+    'encoded',
+    'Actualiza un usuario'
+);
 
 // =====================================
 // PEDIDOS
@@ -365,11 +499,133 @@ function consultarPedidos()
     return $service->consultarPedidos();
 }
 
+// =====================================
+// FUNCIONES DE USUARIOS
+// =====================================
 
+function registrarUsuario($usuario, $contrasena, $estado)
+{
+    $service = new UsuarioService();
+
+    return $service->registrarUsuario(
+        $usuario,
+        $contrasena,
+        $estado
+    );
+}
+
+function consultarUsuario($id)
+{
+    $service = new UsuarioService();
+
+    return $service->consultarUsuario($id);
+}
+
+function listarUsuarios()
+{
+    $service = new UsuarioService();
+
+    return $service->listarUsuarios();
+}
+
+function actualizarUsuario($id, $usuario, $estado)
+{
+    $service = new UsuarioService();
+
+    return $service->actualizarUsuario(
+        $id,
+        $usuario,
+        $estado
+    );
+}
+function validarUsuarioSOAP($server)
+{
+    require_once __DIR__ . '/../models/Usuario.php';
+
+    // Obtener el Header SOAP
+    $header = $server->requestHeader;
+
+    // Verificar que exista el Header
+    if (!$header) {
+        $server->fault(
+            'Authentication',
+            'No se envio el usuario en el Header SOAP.'
+        );
+
+        return false;
+    }
+
+    // Obtener el nombre de usuario
+    if (
+        !isset($header['Security']) ||
+        !isset($header['Security']['UsernameToken']) ||
+        !isset($header['Security']['UsernameToken']['Username'])
+    ) {
+        $server->fault(
+            'Authentication',
+            'No se encontro el nombre de usuario en el Header SOAP.'
+        );
+
+        return false;
+    }
+
+    $usuario = $header['Security']['UsernameToken']['Username'];
+
+    // Buscar el usuario en la base de datos
+    $modeloUsuario = new Usuario();
+
+    $usuarioEncontrado = $modeloUsuario->existe($usuario);
+
+    // Verificar que exista
+    if (!$usuarioEncontrado) {
+        $server->fault(
+            'Authentication',
+            'El usuario no existe.'
+        );
+
+        return false;
+    }
+
+    // Verificar que esté activo
+    if (!$usuarioEncontrado['estado']) {
+        $server->fault(
+            'Authentication',
+            'El usuario esta inactivo.'
+        );
+
+        return false;
+    }
+
+    // Usuario válido
+    return true;
+}
 // =====================================
 // PROCESAR PETICIÓN SOAP
 // =====================================
 
 $HTTP_RAW_POST_DATA = file_get_contents("php://input");
 
-$server->service($HTTP_RAW_POST_DATA);
+if (isset($_GET['wsdl'])) {
+
+    $server->service($HTTP_RAW_POST_DATA);
+
+} else {
+
+    // Analizar la petición SOAP
+    $server->parse_request($HTTP_RAW_POST_DATA);
+
+    // Validar el usuario del Header
+    if (validarUsuarioSOAP($server)) {
+
+        // Ejecutar la operación SOAP
+        $server->invoke_method();
+
+        // Generar la respuesta
+        if (!$server->fault) {
+            $server->serialize_return();
+        }
+    }
+
+    // Enviar la respuesta
+    $server->send_response();
+}
