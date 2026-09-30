@@ -16,7 +16,7 @@ class Pedido
     public function registrar($producto_id, $cliente_id, $cantidad, $fecha, $estado)
     {
         // Validar cantidad
-        if ($cantidad <= 0) {
+        if ($cantidad < 0) {
             return "Error: la cantidad debe ser mayor que cero.";
         }
 
