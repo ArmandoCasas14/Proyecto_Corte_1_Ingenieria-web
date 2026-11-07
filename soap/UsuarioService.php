@@ -40,7 +40,23 @@ class UsuarioService
 
     public function listarUsuarios()
     {
-        return $this->usuario->listar();
+            $usuarios = $this->usuario->listar();
+
+        $respuesta = [
+            'exito' => true,
+            'mensaje' => 'Usuarios consultados correctamente.',
+            'usuarios' => []
+        ];
+
+        foreach ($usuarios as $usuario) {
+            $respuesta['usuarios'][] = [
+                'id' => (int) $usuario['id'],
+                'usuario' => $usuario['usuario'],
+                'estado' => (int) $usuario['estado']
+            ];
+        }
+
+        return $respuesta;
     }
 
     public function actualizarUsuario($id, $usuario, $estado)

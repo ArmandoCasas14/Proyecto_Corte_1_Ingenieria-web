@@ -6,7 +6,9 @@ require_once __DIR__ . '/ClienteService.php';
 require_once __DIR__ . '/PedidoService.php';
 require_once __DIR__ . '/UsuarioService.php';
 
-ini_set('display_errors', '0');
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
 
 $server = new nusoap_server();
@@ -540,64 +542,44 @@ function actualizarUsuario($id, $usuario, $estado)
 }
 function validarUsuarioSOAP($server)
 {
-    require_once __DIR__ . '/../models/Usuario.php';
+    require_once __DIR__ . '/../src/Auth/JwtValidator.php';
 
     // Obtener el Header SOAP
     $header = $server->requestHeader;
 
     // Verificar que exista el Header
-    if (!$header) {
-        $server->fault(
-            'Authentication',
-            'No se envio el usuario en el Header SOAP.'
-        );
-
-        return false;
-    }
-
-    // Obtener el nombre de usuario
     if (
-        !isset($header['Security']) ||
-        !isset($header['Security']['UsernameToken']) ||
-        !isset($header['Security']['UsernameToken']['Username'])
+        !$header ||
+        !isset($header['Security']['BearerToken'])
     ) {
         $server->fault(
             'Authentication',
-            'No se encontro el nombre de usuario en el Header SOAP.'
+            'No se encontro el token JWT en el Header SOAP.'
         );
 
         return false;
     }
 
-    $usuario = $header['Security']['UsernameToken']['Username'];
+    // Obtener el JWT
+    $token = $header['Security']['BearerToken'];
 
-    // Buscar el usuario en la base de datos
-    $modeloUsuario = new Usuario();
+    try {
 
-    $usuarioEncontrado = $modeloUsuario->existe($usuario);
+        // Validar el token generado por Laravel
+        \App\Auth\JwtValidator::validate($token);
 
-    // Verificar que exista
-    if (!$usuarioEncontrado) {
+        // Token válido
+        return true;
+
+    } catch (\Throwable $e) {
+
         $server->fault(
             'Authentication',
-            'El usuario no existe.'
+            'El token JWT es invalido o ha expirado.'
         );
 
         return false;
     }
-
-    // Verificar que esté activo
-    if (!$usuarioEncontrado['estado']) {
-        $server->fault(
-            'Authentication',
-            'El usuario esta inactivo.'
-        );
-
-        return false;
-    }
-
-    // Usuario válido
-    return true;
 }
 // =====================================
 // PROCESAR PETICIÓN SOAP
